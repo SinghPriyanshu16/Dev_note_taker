@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev Note-Taker & Summarizer</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border: #e2e8f0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 2rem;
+        }
+        
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
+        }
+        
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+        
+        .result-area {
+            white-space: pre-wrap;
+            background: #f1f5f9;
+            padding: 1rem;
+            border-radius: 4px;
+            min-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loader {
+            display: none;
+            margin-left: 10px;
+            font-size: 0.9em;
+            color: #64748b;
+        }
+        
+        @media (max-width: 768px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Automated Dev Note-Taker</h1>
+        <p class="subtitle">Paste your PR descriptions or meeting transcripts to generate docs, action items, and track tech debt.</p>
+        
+        <div class="layout">
+            <div class="card">
+                <h3>Input text</h3>
+                <textarea id="inputText" placeholder="Paste PR description, transcript, or raw notes here..."></textarea>
+                <div>
+                    <button id="summarizeBtn">Generate Summary</button>
+                    <span id="loading" class="loader">Processing...</span>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Generated Documentation</h3>
+                <div id="resultArea" class="result-area">Results will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include marked.js for parsing markdown response -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        document.getElementById('summarizeBtn').addEventListener('click', async () => {
+            const text = document.getElementById('inputText').value;
+            const btn = document.getElementById('summarizeBtn');
+            const loading = document.getElementById('loading');
+            const resultArea = document.getElementById('resultArea');
+            
+            if (!text.trim()) {
+                alert('Please enter some text first.');
+                return;
+            }
+            
+            btn.disabled = true;
+            loading.style.display = 'inline';
+            resultArea.innerHTML = 'Analyzing...';
+            
+            try {
+                const response = await fetch('/api/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (typeof marked !== 'undefined') {
+                        resultArea.innerHTML = marked.parse(data.summary);
+                    } else {
+                        resultArea.textContent = data.summary;
+                    }
+                } else {
+                    resultArea.innerHTML = `<span style="color: red;">Error: ${data.error}</span>`;
+                }
+            } catch (err) {
+                console.error(err);
+                resultArea.innerHTML = '<span style="color: red;">Failed to connect to the server.</span>';
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
